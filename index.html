@@ -74,7 +74,7 @@
   .row{ display:flex; gap:12px; flex-wrap:wrap; }
   .row + .row, .row + .note-line, .note-line + .row, .row + .check, .check + .check, .note-line + .check{ margin-top:13px; }
   .field{ flex:1 1 170px; min-width:0; }
-  .field.qty{ flex:0 0 140px; }
+  .field.qty{ flex:0 0 180px; }
   label{ display:block; font-size:12px; font-weight:500; color:var(--muted); margin:0 0 5px; }
   select, input[type="text"], input[type="number"]{
     width:100%; padding:11px 12px; font-size:15px; font-family:var(--sans);
@@ -169,12 +169,42 @@
   @media (max-width:380px){ .grid{ grid-template-columns:1fr; } }
 
   @media print{
-    body{ background:#fff; padding:0; }
+    @page{ size:letter; margin:13mm; }
+    html, body{ background:#fff !important; }
+    body{ padding:0; }
     .wrap > *:not(#printArea){ display:none !important; }
-    #printArea{ display:block !important; }
-    #printArea .result{ border:none; box-shadow:none; padding:0; animation:none; }
-    #printArea .answer-row > div:first-child .big-num{ color:#000; }
-    #printArea .steps{ background:#fff; }
+    #printArea{ display:block !important; color:#14181d; }
+    #printArea, #printArea *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+    .print-head{ display:flex; align-items:center; gap:12px; border-bottom:2px solid #14181d; padding-bottom:10px; margin-bottom:13px; }
+    .print-head .mk{ width:34px; height:34px; flex:0 0 auto; }
+    .print-head .ph-text{ flex:1 1 auto; }
+    .print-head .ph-title{ font-size:15.5px; font-weight:600; color:#14181d; margin:0; }
+    .print-head .ph-sub{ font-size:9.5px; color:#555; margin:2px 0 0; max-width:80ch; line-height:1.4; }
+
+    .jobtbl{ border-collapse:collapse; width:100%; max-width:none; font-size:11px; margin:0 0 13px; }
+    .jobtbl td{ border:1px solid #b9bfc8; padding:5px 10px; color:#14181d; }
+    .jobtbl td:first-child{ font-family:var(--mono); font-size:9.5px; letter-spacing:.04em; text-transform:uppercase; color:#555; background:#f1f3f6; width:128px; white-space:nowrap; }
+
+    #printArea .result{ border:none !important; box-shadow:none !important; padding:0 !important; animation:none; break-inside:avoid; }
+    #printArea .answer-row{ gap:26px; margin-bottom:11px; }
+    #printArea .big-label{ color:#555; font-size:9.5px; }
+    #printArea .big-num{ color:#14181d !important; font-size:18px; }
+    #printArea .answer-row > div:first-child .big-num{ color:#14181d !important; font-size:30px; }
+    #printArea .breakdown{ font-size:10px; color:#333; border-top:1px solid #cdd2da; padding-top:9px; }
+    #printArea .ref{ color:#666; }
+
+    #printArea .steps{ background:#fff !important; border:1px solid #cdd2da; break-inside:avoid; margin-top:12px; }
+    #printArea .steps-h{ color:#14181d; border-bottom:1px solid #cdd2da; padding:8px 12px; font-size:9.5px; }
+    #printArea .stp{ color:#222; border-bottom:1px solid #ededed; padding:5px 12px 5px 38px; font-size:10px; }
+    #printArea .stp::before{ color:#9a6700; }
+
+    .pr-signoff{ display:flex; gap:34px; margin-top:16px; break-inside:avoid; }
+    .pr-signoff .sig{ flex:1 1 0; }
+    .pr-signoff .sigspace{ height:20px; border-bottom:1px solid #8a909a; }
+    .pr-signoff .siglab{ font-family:var(--mono); font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:#666; margin-top:4px; }
+
+    .print-foot{ margin-top:14px; padding-top:8px; border-top:1px solid #cdd2da; font-family:var(--mono); font-size:9px; color:#777; }
   }
 </style>
 </head>
@@ -263,7 +293,7 @@
         <p class="panel-label">Measure <span class="dest">&rarr; inches</span></p>
 
         <div id="qtyRow" class="row">
-          <div class="field qty"><label for="quantity">How many</label><input type="number" id="quantity" value="1" min="1" step="1"></div>
+          <div class="field qty"><label for="quantity">Quantity of parts</label><input type="number" id="quantity" value="1" min="1" step="1"></div>
         </div>
 
         <div id="blockInputs">
@@ -412,7 +442,7 @@
     const n = (document.getElementById("jobPN").value || "").trim() || "\u2014";
     return '<table class="jobtbl">' +
       '<tr><td>Customer</td><td>' + esc(c) + '</td></tr>' +
-      '<tr><td>Part / Description</td><td>' + esc(p) + '</td></tr>' +
+      '<tr><td>Part description</td><td>' + esc(p) + '</td></tr>' +
       '<tr><td>Part Number</td><td>' + esc(n) + '</td></tr></table>';
   }
 
@@ -424,9 +454,10 @@
   function writePrint(bodyHtml){
     const now = new Date();
     document.getElementById("printArea").innerHTML =
-      '<div class="print-head"><div class="ph-title">QPC \u2014 Significant Surface Area Record</div>' +
-      '<div class="ph-sub">How this number was reached. What counts as the clean surface depends on the part drawing or customer spec \u2014 check it before using this on controlled paperwork.</div></div>' +
+      '<div class="print-head"><svg class="mk" width="34" height="34" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#C9A34D"/><g transform="translate(8.95,7.1) scale(0.3636)" fill="#1F2937" stroke="#1F2937" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="10"><polyline points="85.61 150.21 74.4 150.21 68.66 144.17 37 144.25 24.9 132.57 24.9 97.86 36.58 86.27 71.37 86.27 82.38 97.61 82.63 131.89 79.67 135.45 74.08 129.88 75.1 129.02 75.02 100.81 67.87 93.58 39.73 93.58 32.5 100.96 32.66 129.41 39.97 136.88 61.35 136.88 53.17 127.49 63.84 127.49 85.79 150.21"/><path d="M135.59,86.19h-42.48v57.86h7.51v-17.64h35.04l10.64-10.56v-18.97l-10.71-10.69ZM138.62,112.49l-5.98,6.52h-31.72v-25h31.78l5.92,5.72v12.77Z" fill-rule="evenodd"/><polygon points="200.84 86.23 200.85 93.97 167.82 93.97 160.38 101.35 160.38 129.37 167.42 136.64 200.76 136.64 200.9 144.01 165.03 144.01 152.88 132.82 152.88 97.98 164.76 86.23 200.84 86.23"/></g></svg><div class="ph-text"><div class="ph-title">QPC \u2014 Significant Surface Area Record</div>' +
+      '<div class="ph-sub">How this number was reached. What counts as the clean surface depends on the part drawing or customer spec \u2014 check it before using this on controlled paperwork.</div></div></div>' +
       jobInfoHtml() + bodyHtml +
+      '<div class="pr-signoff"><div class="sig"><div class="sigspace"></div><div class="siglab">Checked by</div></div><div class="sig"><div class="sigspace"></div><div class="siglab">Date</div></div></div>' +
       '<div class="print-foot">Generated ' + now.toLocaleString() + ' \u00b7 Based on SP3000 Rev U \u00b7 Internal calculation aid, not for customer submission</div>';
     document.getElementById("printBtn").classList.remove("hidden");
   }
