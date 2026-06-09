@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>QPC · Surface Area Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#f1f4f8;
+    --ink:#14181d; --ink-soft:#3c4654; --muted:#616b78; --faint:#8a939f;
+    --border:#e1e6ed; --line:#d7dde6;
+    --accent:#1366d6; --accent-strong:#0f51ab; --accent-soft:rgba(19,102,214,0.09);
+    --brand:#C9A34D; --glow:rgba(19,102,214,0.07);
+    --warn:#9a6700; --warn-bg:rgba(180,130,0,0.10); --warn-border:rgba(180,130,0,0.42);
+    --danger:#b3261e; --danger-bg:rgba(179,38,30,0.08); --danger-border:rgba(179,38,30,0.40);
+    --shadow-sm:0 1px 2px rgba(20,30,45,0.05);
+    --shadow:0 1px 2px rgba(20,30,45,0.05), 0 10px 30px rgba(20,30,45,0.07);
+    --shadow-lg:0 2px 4px rgba(20,30,45,0.07), 0 18px 44px rgba(20,30,45,0.12);
+    --sans:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0c0f14; --surface:#151a21; --surface-2:#1b212a;
+      --ink:#e8eef5; --ink-soft:#c4cdd8; --muted:#9aa4b1; --faint:#6b7682;
+      --border:#262d37; --line:#2b323d;
+      --accent:#4a9eff; --accent-strong:#7bb8ff; --accent-soft:rgba(74,158,255,0.13);
+      --brand:#C9A34D; --glow:rgba(74,158,255,0.09);
+      --warn:#e3b341; --warn-bg:rgba(227,179,65,0.10); --warn-border:rgba(227,179,65,0.40);
+      --danger:#ff6b61; --danger-bg:rgba(255,107,97,0.10); --danger-border:rgba(255,107,97,0.40);
+      --shadow-sm:0 1px 2px rgba(0,0,0,0.4);
+      --shadow:0 1px 2px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.45);
+      --shadow-lg:0 2px 4px rgba(0,0,0,0.5), 0 18px 44px rgba(0,0,0,0.55);
+    }
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    font-family:var(--sans); color:var(--ink); margin:0; padding:0 20px 64px; min-height:100vh;
+    background:radial-gradient(1100px 520px at 50% -8%, var(--glow), transparent 70%), var(--bg);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  .wrap{ max-width:880px; margin:0 auto; }
+
+  /* Header */
+  header.top{ display:flex; align-items:center; gap:16px; padding:34px 2px 26px; }
+  .mark{ flex:0 0 auto; }
+  .top .title{ flex:1 1 auto; line-height:1.1; }
+  .top .eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--faint); margin:0 0 4px; }
+  .top h1{ margin:0; font-size:25px; font-weight:600; letter-spacing:-0.015em; }
+  .top .tag{ margin:5px 0 0; font-size:13.5px; color:var(--muted); }
+  .top .today{ flex:0 0 auto; align-self:flex-start; font-family:var(--mono); font-size:12px; color:var(--muted); padding:6px 11px; border:1px solid var(--border); border-radius:999px; background:var(--surface); white-space:nowrap; }
+
+  /* Flow spine */
+  .flow{ position:relative; padding-left:58px; }
+  .flow::before{ content:""; position:absolute; left:28px; top:14px; bottom:18px; width:2px; background:var(--brand); opacity:0.6; }
+  .block{ position:relative; margin-bottom:34px; }
+  .block:last-child{ margin-bottom:0; }
+  .block-head{ display:flex; align-items:flex-start; gap:14px; margin-bottom:15px; }
+  .node{ position:absolute; left:-44px; top:-1px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:12px; font-weight:600; color:var(--ink); background:var(--surface); border:2px solid var(--brand); border-radius:8px; box-shadow:var(--shadow-sm); }
+  .block-head-text{ display:flex; flex-direction:column; }
+  .block-title{ margin:0; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+  .blurb{ margin:1px 0 0; font-size:13px; color:var(--muted); }
+
+  /* Panel (white form container) */
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); padding:18px; }
+  .panel + .panel{ margin-top:14px; }
+  .panel-label{ font-family:var(--mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--faint); margin:0 0 13px; display:flex; align-items:center; gap:8px; }
+  .panel-label .dest{ color:var(--accent); }
+
+  .row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .row + .row, .row + .note-line, .note-line + .row, .row + .check, .check + .check, .note-line + .check{ margin-top:13px; }
+  .field{ flex:1 1 170px; min-width:0; }
+  .field.qty{ flex:0 0 140px; }
+  label{ display:block; font-size:12px; font-weight:500; color:var(--muted); margin:0 0 5px; }
+  select, input[type="text"], input[type="number"]{
+    width:100%; padding:11px 12px; font-size:15px; font-family:var(--sans);
+    background:var(--surface-2); color:var(--ink); border:1px solid var(--border); border-radius:9px;
+    transition:border-color .14s ease, box-shadow .14s ease;
+  }
+  input[type="text"], input[type="number"]{ font-family:var(--mono); font-size:14px; letter-spacing:0.01em; }
+  select:focus, input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+
+  .controls{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .check{ display:inline-flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; }
+  .check input{ width:auto; accent-color:var(--accent); margin-top:2px; }
+  .note-line{ margin:8px 0 0; font-size:12px; color:var(--muted); line-height:1.5; }
+
+  button.go{ appearance:none; border:none; background:var(--accent); color:#fff; font-family:var(--sans); font-size:14px; font-weight:600; padding:11px 22px; border-radius:9px; cursor:pointer; transition:background .14s ease, transform .1s ease; }
+  button.go:hover{ background:var(--accent-strong); }
+  button.go:active{ transform:translateY(1px); }
+  button.go:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  button.go.ghost{ background:var(--surface); color:var(--accent); border:1px solid var(--accent); }
+  button.go.ghost:hover{ background:var(--accent-soft); }
+  .btnrow{ display:flex; gap:10px; margin-top:16px; }
+
+  /* Shape tiles (script-owned class .card) */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; }
+  .card{ position:relative; overflow:hidden; min-height:74px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow); cursor:pointer; transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); opacity:0; transition:opacity .15s ease; }
+  .card:hover{ transform:translateY(-2px); border-color:var(--accent); box-shadow:var(--shadow-lg); }
+  .card:hover::before{ opacity:1; }
+  .card.active{ border-color:var(--accent); box-shadow:var(--shadow-lg); }
+  .card.active::before{ opacity:1; }
+  .tile-name{ font-size:14.5px; font-weight:600; letter-spacing:-0.005em; color:var(--ink); }
+  .card.active .tile-name{ color:var(--accent-strong); }
+  .tile-desc{ font-size:12.5px; color:var(--muted); line-height:1.4; margin-top:6px; }
+
+  /* Result */
+  .result{ background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:14px; box-shadow:var(--shadow); padding:20px; }
+  .result.note{ border-top-color:var(--warn); }
+  .result.error{ border-top-color:var(--danger); }
+  .answer-row{ display:flex; flex-wrap:wrap; gap:30px; align-items:flex-end; margin-bottom:16px; }
+  .big-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--faint); margin-bottom:5px; }
+  .big-num{ font-family:var(--mono); font-weight:600; font-size:22px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.05; }
+  .answer-row > div:first-child .big-num{ font-size:42px; letter-spacing:-0.01em; color:var(--accent-strong); }
+  .result.note .big-num{ color:var(--warn); font-size:28px; }
+  .breakdown{ font-size:12.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:12px; margin-top:4px; line-height:1.6; }
+  .breakdown.err-b{ border-top-color:var(--warn-border); }
+  .err-msg{ font-weight:600; color:var(--danger); font-size:15px; }
+  .ref{ font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+
+  /* Calibration ledger */
+  .steps{ counter-reset:stp; margin-top:16px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:4px 0; }
+  .steps-h{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); font-weight:600; padding:11px 16px; border-bottom:1px solid var(--border); }
+  .stp{ counter-increment:stp; font-family:var(--mono); font-size:12.5px; color:var(--ink-soft); line-height:1.55; padding:8px 16px 8px 44px; position:relative; border-bottom:1px solid var(--border); }
+  .stp:last-child{ border-bottom:none; }
+  .stp::before{ content:counter(stp,decimal-leading-zero); position:absolute; left:16px; top:8px; color:var(--brand); font-weight:600; font-size:11px; }
+
+  /* Footer */
+  footer.note{ margin:40px 0 0; padding-top:18px; border-top:1px solid var(--border); font-size:12px; color:var(--faint); line-height:1.55; }
+
+  /* Print record */
+  #printArea{ display:none; }
+  .print-head .ph-title{ font-size:18px; font-weight:600; color:var(--ink); }
+  .print-head .ph-sub{ font-size:11.5px; color:var(--muted); margin:3px 0 14px; }
+  .jobtbl{ border-collapse:collapse; margin-bottom:16px; font-size:12.5px; width:100%; max-width:430px; }
+  .jobtbl td{ border:1px solid var(--border); padding:6px 11px; }
+  .jobtbl td:first-child{ font-family:var(--mono); font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color:var(--muted); background:var(--surface-2); white-space:nowrap; width:1%; }
+  .print-foot{ margin-top:18px; padding-top:9px; border-top:1px solid var(--border); font-family:var(--mono); font-size:10.5px; color:var(--faint); }
+
+  .hidden{ display:none !important; }
+  .block-read{ display:none; }
+  .flow:has(#output:not(.hidden)) .block-read{ display:block; }
+
+  /* Motion */
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{ opacity:0; transform:translateY(10px); animation:rise .5s cubic-bezier(.22,.61,.36,1) forwards; }
+    @keyframes rise{ to{ opacity:1; transform:none; } }
+    .result{ animation:rise .32s cubic-bezier(.22,.61,.36,1) both; }
+  }
+
+  /* Responsive */
+  @media (max-width:560px){
+    body{ padding:0 14px 48px; }
+    header.top{ padding-top:24px; gap:12px; flex-wrap:wrap; }
+    .top .today{ order:3; }
+    .flow{ padding-left:0; }
+    .flow::before{ display:none; }
+    .node{ position:static; }
+    .block-head{ gap:11px; }
+    .field{ flex:1 1 100%; }
+    .grid{ grid-template-columns:1fr 1fr; }
+    .answer-row > div:first-child .big-num{ font-size:34px; }
+  }
+  @media (max-width:380px){ .grid{ grid-template-columns:1fr; } }
+
+  @media print{
+    body{ background:#fff; padding:0; }
+    .wrap > *:not(#printArea){ display:none !important; }
+    #printArea{ display:block !important; }
+    #printArea .result{ border:none; box-shadow:none; padding:0; animation:none; }
+    #printArea .answer-row > div:first-child .big-num{ color:#000; }
+    #printArea .steps{ background:#fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top reveal">
+    <svg class="mark" width="42" height="42" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quality Precision Cleaning logo">
+        <circle cx="50" cy="50" r="48" fill="#C9A34D"/>
+        <g transform="translate(8.95,7.1) scale(0.3636)" fill="#1F2937" stroke="#1F2937" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="10">
+          <polyline points="85.61 150.21 74.4 150.21 68.66 144.17 37 144.25 24.9 132.57 24.9 97.86 36.58 86.27 71.37 86.27 82.38 97.61 82.63 131.89 79.67 135.45 74.08 129.88 75.1 129.02 75.02 100.81 67.87 93.58 39.73 93.58 32.5 100.96 32.66 129.41 39.97 136.88 61.35 136.88 53.17 127.49 63.84 127.49 85.79 150.21"/>
+          <path d="M135.59,86.19h-42.48v57.86h7.51v-17.64h35.04l10.64-10.56v-18.97l-10.71-10.69ZM138.62,112.49l-5.98,6.52h-31.72v-25h31.78l5.92,5.72v12.77Z" fill-rule="evenodd"/>
+          <polygon points="200.84 86.23 200.85 93.97 167.82 93.97 160.38 101.35 160.38 129.37 167.42 136.64 200.76 136.64 200.9 144.01 165.03 144.01 152.88 132.82 152.88 97.98 164.76 86.23 200.84 86.23"/>
+        </g>
+      </svg>
+    <div class="title">
+      <p class="eyebrow">Quality Precision Cleaning</p>
+      <h1>Surface Area Calculator</h1>
+      <p class="tag">Calculate a part's significant surface area, and the amount of solvent needed to prove it's clean.</p>
+    </div>
+    <div class="today" id="today"></div>
+  </header>
+
+  <div class="flow">
+
+    <!-- 01 PART -->
+    <section class="block reveal" style="animation-delay:.05s">
+      <div class="block-head">
+        <span class="node">01</span>
+        <div class="block-head-text">
+          <h2 class="block-title">Part</h2>
+          <p class="blurb">Whose part this is. It prints on the record, so the result can always be traced back to the job.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="row">
+          <div class="field"><label for="jobCustomer">Customer</label><input type="text" id="jobCustomer" placeholder="Blue Origin"></div>
+          <div class="field"><label for="jobPart">Part description</label><input type="text" id="jobPart" placeholder="Manifold housing"></div>
+          <div class="field"><label for="jobPN">Part number</label><input type="text" id="jobPN" placeholder="000-158-9514-001"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 SHAPE -->
+    <section class="block reveal" style="animation-delay:.1s">
+      <div class="block-head">
+        <span class="node">02</span>
+        <div class="block-head-text">
+          <h2 class="block-title">Shape</h2>
+          <p class="blurb">Pick the closest match &mdash; the shape is what decides how the surface area gets worked out.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card active" data-type="block" onclick="selectType('block', this)">
+          <div class="tile-name">Block / Plate</div><div class="tile-desc">Flat or box-shaped. Every outside face gets counted.</div>
+        </div>
+        <div class="card" data-type="round" onclick="selectType('round', this)">
+          <div class="tile-name">Round Solid</div><div class="tile-desc">Solid rod, pin, or plug. The whole outside counts.</div>
+        </div>
+        <div class="card" data-type="tube" onclick="selectType('tube', this)">
+          <div class="tile-name">Tube / Hose</div><div class="tile-desc">Fluid runs through the middle, so the inside bore is what must come clean.</div>
+        </div>
+        <div class="card" data-type="complex" onclick="selectType('complex', this)">
+          <div class="tile-name">Fitting / Manifold</div><div class="tile-desc">Ports and passages inside that can't be measured from the outside.</div>
+        </div>
+        <div class="card" data-type="seal" onclick="selectType('seal', this)">
+          <div class="tile-name">Seal / Gasket</div><div class="tile-desc">O-rings, gaskets, washers, jacketed seals. The whole surface counts.</div>
+        </div>
+        <div class="card" data-type="known" onclick="selectType('known', this)">
+          <div class="tile-name">Area already known</div><div class="tile-desc">When the area is already on the drawing, the spec, or a hand estimate.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 SIZE -->
+    <section class="block reveal" style="animation-delay:.15s">
+      <div class="block-head">
+        <span class="node">03</span>
+        <div class="block-head-text">
+          <h2 class="block-title">Size</h2>
+          <p class="blurb">Measure in inches. The tool turns that into surface area and the solvent we collect to prove it's clean.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="panel-label">Measure <span class="dest">&rarr; inches</span></p>
+
+        <div id="qtyRow" class="row">
+          <div class="field qty"><label for="quantity">How many</label><input type="number" id="quantity" value="1" min="1" step="1"></div>
+        </div>
+
+        <div id="blockInputs">
+          <div class="row">
+            <div class="field"><label for="length">Length, in</label><input type="number" id="length" step="0.001" min="0"></div>
+            <div class="field"><label for="width">Width, in</label><input type="number" id="width" step="0.001" min="0"></div>
+            <div class="field"><label for="height">Height / thickness, in</label><input type="number" id="height" step="0.001" min="0"></div>
+          </div>
+        </div>
+
+        <div id="roundInputs" class="hidden">
+          <div class="row">
+            <div class="field"><label for="diameter">Diameter, in</label><input type="number" id="diameter" step="0.001" min="0"></div>
+            <div class="field"><label for="roundLength">Length, in</label><input type="number" id="roundLength" step="0.001" min="0"></div>
+          </div>
+        </div>
+
+        <div id="tubeInputs" class="hidden">
+          <div class="row">
+            <div class="field"><label for="od">Outside diameter, in</label><input type="number" id="od" step="0.001" min="0"></div>
+            <div class="field"><label for="id">Inside diameter, in</label><input type="number" id="id" step="0.001" min="0"></div>
+            <div class="field"><label for="tubeLength">Length, in</label><input type="number" id="tubeLength" step="0.001" min="0"></div>
+          </div>
+          <p class="note-line">Inside diameter is the open hole the fluid flows through. Use the full length if the tube is bent.</p>
+          <label class="check"><input type="checkbox" id="tubeOutside"> Clean the outside too</label>
+          <p class="note-line">Most tubes only need the inside cleaned &mdash; that's the surface the fluid touches. Tick this only if the print also calls for the outside.</p>
+          <label class="check"><input type="checkbox" id="tubeCavity"> Can't see inside to inspect</label>
+          <p class="note-line">Bent, coiled, or blind tubing we can't see into. When we can't inspect the inside by eye, an extra flush is how we prove it's clean.</p>
+        </div>
+
+        <div id="complexInputs" class="hidden">
+          <div class="row">
+            <div class="field"><label for="cL">Overall length, in</label><input type="number" id="cL" step="0.001" min="0"></div>
+            <div class="field"><label for="cW">Overall width, in</label><input type="number" id="cW" step="0.001" min="0"></div>
+            <div class="field"><label for="cH">Overall height, in</label><input type="number" id="cH" step="0.001" min="0"></div>
+          </div>
+          <p class="note-line">Outer size only, for a rough check. The passages inside can't be sized from the outside, so they're worked out by hand.</p>
+        </div>
+
+        <div id="sealInputs" class="hidden">
+          <div class="row">
+            <div class="field"><label for="sealType">Seal type</label>
+              <select id="sealType" onchange="updateSealType()">
+                <option value="flat">Flat gasket or washer (with a hole)</option>
+                <option value="oring">O-ring or round cord seal</option>
+                <option value="strip">Straight strip seal</option>
+                <option value="spring">Spring-energized (plastic jacket over a metal spring)</option>
+              </select>
+            </div>
+          </div>
+          <div id="sealFlat" class="row" style="margin-top:13px;">
+            <div class="field"><label for="sOD">Outside diameter, in</label><input type="number" id="sOD" step="0.001" min="0"></div>
+            <div class="field"><label for="sID">Hole diameter, in</label><input type="number" id="sID" step="0.001" min="0"></div>
+            <div class="field"><label for="sT">Thickness, in</label><input type="number" id="sT" step="0.001" min="0"></div>
+          </div>
+          <div id="sealOring" class="row hidden" style="margin-top:13px;">
+            <div class="field"><label for="oID">Inside diameter, in</label><input type="number" id="oID" step="0.001" min="0"></div>
+            <div class="field"><label for="oCS">Cord thickness, in</label><input type="number" id="oCS" step="0.001" min="0"></div>
+          </div>
+          <div id="sealStrip" class="row hidden" style="margin-top:13px;">
+            <div class="field"><label for="stL">Length, in</label><input type="number" id="stL" step="0.001" min="0"></div>
+            <div class="field"><label for="stW">Width, in</label><input type="number" id="stW" step="0.001" min="0"></div>
+            <div class="field"><label for="stT">Thickness, in</label><input type="number" id="stT" step="0.001" min="0"></div>
+          </div>
+          <div id="sealSpring" class="hidden" style="margin-top:13px;">
+            <div class="row">
+              <div class="field"><label for="spOD">Outside diameter, in</label><input type="number" id="spOD" step="0.001" min="0"></div>
+              <div class="field"><label for="spID">Inside diameter, in</label><input type="number" id="spID" step="0.001" min="0"></div>
+              <div class="field"><label for="spW">Width, in</label><input type="number" id="spW" step="0.001" min="0"></div>
+            </div>
+            <p class="note-line">Outer size only. The hidden spring and the gap around it can't be measured from outside &mdash; that area comes from the seal's datasheet.</p>
+          </div>
+        </div>
+
+        <div id="knownInputs" class="hidden">
+          <p class="note-line" style="margin-top:0;">When the significant area is already set &mdash; by the drawing, the customer, or a hand estimate. This is where manifolds, valves, and spring-energized seals end up.</p>
+          <div class="row" style="margin-top:11px;">
+            <div class="field"><label for="knownArea">Known area</label><input type="number" id="knownArea" step="0.001" min="0"></div>
+            <div class="field"><label for="knownUnit">Unit</label>
+              <select id="knownUnit"><option value="ft2">ft²</option><option value="in2">in²</option></select>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="knownCavity"> Has blind holes or hidden cavities</label>
+          <p class="note-line">Adds an extra flush, because hidden surfaces can't be checked by eye.</p>
+        </div>
+
+        <div class="btnrow">
+          <button class="go" onclick="calculate()">Calculate</button>
+          <button class="go ghost hidden" id="printBtn" onclick="doPrint()">Save PDF</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 RESULT -->
+    <section class="block block-read">
+      <div class="block-head">
+        <span class="node">04</span>
+        <div class="block-head-text">
+          <h2 class="block-title">Result</h2>
+          <p class="blurb">How much surface has to come clean, how much solvent to collect, and the steps behind the number.</p>
+        </div>
+      </div>
+      <div id="output" class="result hidden"></div>
+    </section>
+
+  </div>
+
+  <div id="printArea"></div>
+</div>
+
+<script>
+  // ===== SP3000 Rev U solvent volume rules =====
+  // Section 11.5 — final-rinse SAMPLE (particle count / NVR analysis):
+  //   100 mL effluent solvent per ft2 of significant surface, 100 mL minimum.
+  const SAMPLE_ML_PER_FT2 = 100;
+  const SAMPLE_MIN_ML     = 100;
+  // Section 11.9.2 — verification rinse for parts with blind holes / cavities
+  //   not accessible for standard visual inspection:
+  //   < 5 ft2 significant surface -> 500 mL minimum
+  //   >= 5 ft2 significant surface -> 100 mL per ft2
+  const CAVITY_RINSE_MIN_ML = 500;
+  const CAVITY_RINSE_ML_PER_FT2 = 100;
+  const CAVITY_THRESHOLD_FT2 = 5;
+  // NOTE: SP3000 §11.2 batches by material composition / part number and
+  // "pieces per square foot." There is NO 1.0 ft2-per-batch cap in SP3000,
+  // so the old batch-splitting was removed — §11.5 sample volume is a flat
+  // area formula. If a physical batch-size limit exists in another controlled
+  // document, it does not change the §11.5 sample volume.
+  // =====================================
+
+  const IN2_PER_FT2 = 144, PI = Math.PI;
+  let selectedType = "block";
+
+  const v = id => { const n = parseFloat(document.getElementById(id).value); return isNaN(n) ? 0 : n; };
+  const chk = id => document.getElementById(id).checked;
+  const ft2 = n => Number(n).toFixed(2);
+  const in2 = n => Number(n).toFixed(1);
+  const si = n => Number(n).toFixed(2);   // in² for step lines
+  const sf = n => Number(n).toFixed(4);   // ft² for step lines
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function jobInfoHtml(){
+    const c = (document.getElementById("jobCustomer").value || "").trim() || "\u2014";
+    const p = (document.getElementById("jobPart").value || "").trim() || "\u2014";
+    const n = (document.getElementById("jobPN").value || "").trim() || "\u2014";
+    return '<table class="jobtbl">' +
+      '<tr><td>Customer</td><td>' + esc(c) + '</td></tr>' +
+      '<tr><td>Part / Description</td><td>' + esc(p) + '</td></tr>' +
+      '<tr><td>Part Number</td><td>' + esc(n) + '</td></tr></table>';
+  }
+
+  function stepsBlock(lines){
+    return '<div class="steps"><div class="steps-h">How we got this number</div>' +
+      lines.map(l => '<div class="stp">' + l + '</div>').join('') + '</div>';
+  }
+
+  function writePrint(bodyHtml){
+    const now = new Date();
+    document.getElementById("printArea").innerHTML =
+      '<div class="print-head"><div class="ph-title">QPC \u2014 Significant Surface Area Record</div>' +
+      '<div class="ph-sub">How this number was reached. What counts as the clean surface depends on the part drawing or customer spec \u2014 check it before using this on controlled paperwork.</div></div>' +
+      jobInfoHtml() + bodyHtml +
+      '<div class="print-foot">Generated ' + now.toLocaleString() + ' \u00b7 Based on SP3000 Rev U \u00b7 Internal calculation aid, not for customer submission</div>';
+    document.getElementById("printBtn").classList.remove("hidden");
+  }
+
+  function doPrint(){
+    if (document.getElementById("printArea").innerHTML.trim() === "") { alert("Calculate a result first."); return; }
+    window.print();
+  }
+
+  function selectType(t, el) {
+    selectedType = t;
+    document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+    el.classList.add("active");
+    ["blockInputs","roundInputs","tubeInputs","complexInputs","sealInputs","knownInputs"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("qtyRow").classList.remove("hidden");
+    if (t === "block")   document.getElementById("blockInputs").classList.remove("hidden");
+    if (t === "round")   document.getElementById("roundInputs").classList.remove("hidden");
+    if (t === "tube")    document.getElementById("tubeInputs").classList.remove("hidden");
+    if (t === "complex") document.getElementById("complexInputs").classList.remove("hidden");
+    if (t === "seal")    document.getElementById("sealInputs").classList.remove("hidden");
+    if (t === "known") { document.getElementById("knownInputs").classList.remove("hidden"); document.getElementById("qtyRow").classList.add("hidden"); }
+    document.getElementById("output").classList.add("hidden");
+    document.getElementById("printArea").innerHTML = "";
+    document.getElementById("printBtn").classList.add("hidden");
+  }
+
+  function updateSealType() {
+    const t = document.getElementById("sealType").value;
+    document.getElementById("sealFlat").classList.toggle("hidden", t !== "flat");
+    document.getElementById("sealOring").classList.toggle("hidden", t !== "oring");
+    document.getElementById("sealStrip").classList.toggle("hidden", t !== "strip");
+    document.getElementById("sealSpring").classList.toggle("hidden", t !== "spring");
+    document.getElementById("output").classList.add("hidden");
+  }
+
+  // Sample collection happens in whole 100 mL pours — we can't collect an exact
+  // odd volume — so the required volume is rounded UP to the next 100 mL. Rounding
+  // up never collects less than SP3000 requires, so it stays compliant.
+  const roundUp100 = ml => Math.ceil(ml / 100) * 100;
+
+  // SP3000 §11.5 — 100 mL per ft² of significant surface, 100 mL minimum.
+  function sampleRaw(sig) { return sig <= 0 ? 0 : Math.max(SAMPLE_MIN_ML, sig * SAMPLE_ML_PER_FT2); }
+  function sampleVolume(sig) { return roundUp100(sampleRaw(sig)); }
+
+  // SP3000 §11.9.2 — 500 mL min under 5 ft², else 100 mL/ft². At exactly 5 ft²
+  // both branches give 500 mL, so there is no jump at the boundary.
+  function cavityRaw(sig) { return sig <= 0 ? 0 : (sig < CAVITY_THRESHOLD_FT2 ? CAVITY_RINSE_MIN_ML : sig * CAVITY_RINSE_ML_PER_FT2); }
+  function cavityRinseVolume(sig) { return roundUp100(cavityRaw(sig)); }
+
+  function err(msg) {
+    const o = document.getElementById("output");
+    o.className = "result error";
+    o.innerHTML = '<div class="err-msg">' + msg + '</div>';
+    o.classList.remove("hidden");
+  }
+
+  function showAnswer(sig, opts) {
+    opts = opts || {};
+    const raw = Math.round(sampleRaw(sig));
+    const sample = sampleVolume(sig);
+    const samples = sample / 100;
+    let cavityCard = "", cavityNote = "", cav = 0;
+    if (opts.cavity) {
+      cav = cavityRinseVolume(sig);
+      cavityCard = '<div><div class="big-label">Extra flush</div><div class="big-num">' + cav + ' mL</div></div>';
+      cavityNote = ' Hidden-area parts get an extra flush \u2014 500 mL if under 5 ft\u00b2, otherwise 100 mL per square foot, rounded up (basis: \u00a711.9.2).';
+    }
+    const steps = (opts.steps || []).slice();
+    steps.push("Solvent needed: " + SAMPLE_ML_PER_FT2 + " mL per square foot = " + raw + " mL (at least " + SAMPLE_MIN_ML + ")");
+    steps.push("Rounded up to whole 100 mL pours = " + sample + " mL \u2014 collected as " + samples + " \u00d7 100 mL");
+    if (opts.cavity) {
+      steps.push("Extra flush for hidden areas: " + (sig < CAVITY_THRESHOLD_FT2
+        ? "500 mL (under 5 ft\u00b2)"
+        : "round up " + sf(sig) + " \u00d7 100") + " = " + cav + " mL");
+    }
+    const body =
+      '<div class="answer-row">' +
+        '<div><div class="big-label">Significant Surface Area</div><div class="big-num">' + ft2(sig) + ' ft²</div></div>' +
+        '<div><div class="big-label">Solvent to collect</div><div class="big-num">' + sample + ' mL</div></div>' +
+        '<div><div class="big-label">100 mL samples</div><div class="big-num">' + samples + '</div></div>' +
+        cavityCard +
+      '</div>' +
+      '<div class="breakdown">' + ft2(sig) + ' ft² = ' + in2(sig * IN2_PER_FT2) + ' in². ' +
+      'Collect ' + SAMPLE_ML_PER_FT2 + ' mL per square foot, at least ' + SAMPLE_MIN_ML + ' mL, rounded up to whole 100 mL pours.' +
+      cavityNote + (opts.extra || "") + ' <span class="ref">Basis: SP3000 §11.5.</span></div>' +
+      stepsBlock(steps);
+    const o = document.getElementById("output");
+    o.className = "result";
+    o.innerHTML = body;
+    o.classList.remove("hidden");
+    writePrint('<div class="result">' + body + '</div>');
+  }
+
+  function calculate() {
+    const q = Math.max(1, Math.floor(v("quantity")));
+
+    if (selectedType === "known") {
+      const a = v("knownArea");
+      if (a <= 0) return err("Enter an area greater than zero.");
+      const unit = document.getElementById("knownUnit").value;
+      const sig = unit === "ft2" ? a : a / IN2_PER_FT2;
+      const steps = [
+        "We used the area entered directly",
+        "Entered: " + a + " " + (unit === "ft2" ? "ft²" : "in²"),
+        unit === "ft2" ? "= " + sf(sig) + " ft²" : "\u00f7 144 to get square feet = " + sf(sig) + " ft²"
+      ];
+      return showAnswer(sig, { cavity: chk("knownCavity"), steps: steps });
+    }
+
+    if (selectedType === "seal") {
+      const type = document.getElementById("sealType").value;
+
+      // Spring-energized: spring area is not derivable from the envelope and the
+      // jacket/spring gap is an entrapment cavity. Refuse to certify significant
+      // surface; show envelope reference and route to Known Significant Area.
+      if (type === "spring") {
+        const OD = v("spOD"), ID = v("spID"), W = v("spW");
+        let envLine = "Enter the outer size for a rough size check.";
+        let envStep = "Outer size: not entered";
+        if (OD > 0 && W > 0 && ID < OD) {
+          const ro = OD/2, ri = ID/2;
+          const env = ((2*PI*(ro*ro - ri*ri)) + (2*PI*ro*W) + (2*PI*ri*W)) * q / IN2_PER_FT2;
+          envLine = "Rough outer size: " + ft2(env) + " ft². This leaves out the spring and the space around it.";
+          envStep = "Rough outer size = " + sf(env) + " ft² (a size check only, not the answer)";
+        }
+        const body =
+          '<div class="big-label">We can\u2019t measure this one automatically</div>' +
+          '<div class="breakdown err-b">' + envLine + '<br><br>' +
+          'A spring-energized seal hides a metal spring inside its jacket. The spring\u2019s surface can\u2019t be worked out from the outside, and the gap around it traps fluid. ' +
+          'Get the area from the seal\u2019s datasheet or a hand estimate, then enter it under <strong>Area already known</strong> and tick the hidden-cavities box.<br><br>' +
+          '<strong>What to count:</strong> if the fluid can reach the spring side, count the inside of the jacket and the spring. If that side is sealed off, count just the sealing lip.<br><br>' +
+          'Trap-prone, so it gets an extra flush and skips the ultrasonic cleaner. The jacket is plastic, so wipe-clean is preferred. <span class="ref">Basis: SP3000 §7.6, §7.8, §10.2, §11.9.2.</span></div>' +
+          stepsBlock([
+            "Shape: a jacketed seal with a spring inside",
+            "We measured (outer size): OD=" + OD + ", ID=" + ID + ", W=" + W + " in \u00b7 " + q + " part(s)",
+            envStep,
+            "The spring\u2019s surface can\u2019t be measured from the outside",
+            "Clean surface: take it from the datasheet or a hand estimate"
+          ]);
+        const o = document.getElementById("output");
+        o.className = "result note";
+        o.innerHTML = body;
+        o.classList.remove("hidden");
+        writePrint('<div class="result note">' + body + '</div>');
+        return;
+      }
+
+      let areaIn2 = 0, sealSteps = [];
+      if (type === "flat") {
+        const OD = v("sOD"), ID = v("sID"), T = v("sT");
+        if (OD <= 0 || T <= 0) return err("Enter outside diameter and thickness.");
+        if (ID >= OD) return err("Hole (inside) diameter must be smaller than outside diameter.");
+        const ro = OD/2, ri = ID/2;
+        const faces   = 2 * PI * (ro*ro - ri*ri); // top + bottom
+        const outEdge = 2 * PI * ro * T;
+        const inEdge  = 2 * PI * ri * T;
+        areaIn2 = faces + outEdge + inEdge;
+        sealSteps = [
+          "Shape: a flat ring with a hole",
+          "We measured: OD=" + OD + ", hole=" + ID + ", thickness=" + T + " in \u00b7 " + q + " part(s)",
+          "Top + bottom faces: " + si(faces) + " in²",
+          "Outer edge: " + si(outEdge) + " in²",
+          "Inner edge (the hole): " + si(inEdge) + " in²",
+          "All of it has to come clean = " + si(areaIn2) + " in² each"
+        ];
+      } else if (type === "oring") {
+        const ID = v("oID"), CS = v("oCS");
+        if (ID <= 0 || CS <= 0) return err("Enter O-ring ID and cross-section diameter.");
+        const R = (ID + CS) / 2; // centerline radius
+        const r = CS / 2;        // cord radius
+        areaIn2 = 4 * PI * PI * R * r; // torus surface
+        sealSteps = [
+          "Shape: a ring (doughnut)",
+          "We measured: inside dia=" + ID + ", cord=" + CS + " in \u00b7 " + q + " part(s)",
+          "Ring radius = (inside + cord) \u00f7 2 = " + R.toFixed(4) + " in; cord radius = " + r.toFixed(4) + " in",
+          "Whole ring surface: 4\u03c0\u00b2 \u00d7 R \u00d7 r = " + si(areaIn2) + " in² each"
+        ];
+      } else { // strip — same prism math as Block / Plate
+        const L = v("stL"), W = v("stW"), T = v("stT");
+        if (L <= 0 || W <= 0 || T <= 0) return err("Enter length, width, and thickness.");
+        areaIn2 = 2 * (L*W + L*T + W*T);
+        sealSteps = [
+          "Shape: a straight strip",
+          "We measured: L=" + L + ", W=" + W + ", T=" + T + " in \u00b7 " + q + " part(s)",
+          "All six faces: 2 \u00d7 (L\u00b7W + L\u00b7T + W\u00b7T) = " + si(areaIn2) + " in² each"
+        ];
+      }
+      const total = areaIn2 * q, sig = (total) / IN2_PER_FT2;
+      if (sig <= 0) return err("Significant surface came out as zero. Check the measurements.");
+      sealSteps.push("\u00d7 " + q + " part(s) = " + si(total) + " in²");
+      sealSteps.push("\u00f7 144 to get square feet = " + sf(sig) + " ft²");
+      return showAnswer(sig, { steps: sealSteps, extra:
+        " Counts every outside surface. Soft seals are usually wiped clean by hand, not run through the ultrasonic cleaner; the solvent figure assumes a flush instead." });
+    }
+
+    if (selectedType === "block") {
+      const L = v("length"), W = v("width"), H = v("height");
+      if (L <= 0 || W <= 0 || H <= 0) return err("Enter length, width, and height.");
+      const per = 2 * (L*W + L*H + W*H), total = per * q, sig = total / IN2_PER_FT2;
+      return showAnswer(sig, { steps: [
+        "Shape: a box",
+        "We measured: L=" + L + ", W=" + W + ", H=" + H + " in \u00b7 " + q + " part(s)",
+        "Add up all six faces: 2 \u00d7 (L\u00b7W + L\u00b7H + W\u00b7H)",
+        "= 2 \u00d7 (" + L + "\u00b7" + W + " + " + L + "\u00b7" + H + " + " + W + "\u00b7" + H + ") = " + si(per) + " in² each",
+        "Every outside face has to come clean = " + si(per) + " in² each",
+        "\u00d7 " + q + " part(s) = " + si(total) + " in²",
+        "\u00f7 144 to get square feet = " + sf(sig) + " ft²"
+      ]});
+    }
+
+    if (selectedType === "round") {
+      const D = v("diameter"), L = v("roundLength");
+      if (D <= 0 || L <= 0) return err("Enter diameter and length.");
+      const r = D/2, per = 2*PI*r*r + 2*PI*r*L, total = per * q, sig = total / IN2_PER_FT2;
+      return showAnswer(sig, { steps: [
+        "Shape: a solid cylinder",
+        "We measured: D=" + D + ", L=" + L + " in \u00b7 " + q + " part(s)",
+        "Radius = half the diameter = " + r.toFixed(4) + " in",
+        "Two ends + the side: 2\u03c0r\u00b2 + 2\u03c0r\u00b7L = " + si(per) + " in² each",
+        "Every outside face counts = " + si(per) + " in² each",
+        "\u00d7 " + q + " part(s) = " + si(total) + " in²",
+        "\u00f7 144 to get square feet = " + sf(sig) + " ft²"
+      ]});
+    }
+
+    if (selectedType === "tube") {
+      const OD = v("od"), ID = v("id"), L = v("tubeLength");
+      if (OD <= 0 || ID <= 0 || L <= 0) return err("Enter OD, ID, and length.");
+      if (ID >= OD) return err("Inside diameter must be smaller than outside diameter. Re-check the measurement.");
+      const extPer = PI*OD*L, intPer = PI*ID*L, both = chk("tubeOutside");
+      const sigPer = both ? (extPer + intPer) : intPer;
+      const total = sigPer * q, sig = total / IN2_PER_FT2;
+      return showAnswer(sig, {
+        cavity: chk("tubeCavity"),
+        extra: " Inside " + ft2(intPer * q / IN2_PER_FT2) + " ft², outside " + ft2(extPer * q / IN2_PER_FT2) + " ft².",
+        steps: [
+          "Shape: a tube \u2014 fluid runs through the bore",
+          "We measured: OD=" + OD + ", ID=" + ID + ", L=" + L + " in \u00b7 " + q + " part(s)",
+          "Outside skin: \u03c0 \u00d7 OD \u00d7 L = " + si(extPer) + " in² each",
+          "Inside bore: \u03c0 \u00d7 ID \u00d7 L = " + si(intPer) + " in² each",
+          (both ? "Inside and outside both count = " + si(sigPer) + " in² each"
+                : "Only the bore touches the fluid, so that\u2019s what must come clean = " + si(intPer) + " in² each"),
+          "\u00d7 " + q + " part(s) = " + si(total) + " in²",
+          "\u00f7 144 to get square feet = " + sf(sig) + " ft²"
+        ]
+      });
+    }
+
+    if (selectedType === "complex") {
+      const L = v("cL"), W = v("cW"), H = v("cH");
+      if (L <= 0 || W <= 0 || H <= 0) return err("Enter overall length, width, and height.");
+      const env = 2 * (L*W + L*H + W*H) * q / IN2_PER_FT2;
+      const body =
+        '<div class="big-label">Rough outer size only</div>' +
+        '<div class="big-num">' + ft2(env) + ' ft²</div>' +
+        '<div class="breakdown err-b">We can\u2019t size the inside of a fitting, manifold, or valve from the outside. ' +
+        'Work out the inside area from the drawing or by hand, then enter it under <strong>Area already known</strong> and tick the hidden-cavities box.<br><br>' +
+        'These parts trap fluid, so they get an extra flush to prove they\u2019re clean \u2014 and they don\u2019t go through the ultrasonic cleaner. ' +
+        '<span class="ref">Basis: SP3000 §11.5, §11.9.2, §7.8.</span></div>' +
+        stepsBlock([
+          "Shape: a fitting, manifold, or valve",
+          "We measured (outer size): L=" + L + ", W=" + W + ", H=" + H + " in \u00b7 " + q + " part(s)",
+          "Rough outer size = " + sf(env) + " ft² (a size check only, not the answer)",
+          "Inside area: worked out by hand \u2014 enter it under Area already known"
+        ]);
+      const o = document.getElementById("output");
+      o.className = "result note";
+      o.innerHTML = body;
+      o.classList.remove("hidden");
+      writePrint('<div class="result note">' + body + '</div>');
+      return;
+    }
+  }
+
+</script>
+
+<script>(function(){var t=document.getElementById("today");if(t){t.textContent=new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}})();</script>
+</body>
+</html>
