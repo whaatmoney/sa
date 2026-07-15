@@ -493,14 +493,15 @@
     document.getElementById("output").classList.add("hidden");
   }
 
-  // Sample collection happens in whole 100 mL pours — we can't collect an exact
-  // odd volume — so the required volume is rounded UP to the next 100 mL. Rounding
-  // up never collects less than SP3000 requires, so it stays compliant.
+  // Sample collection is recorded in 50 mL increments. Use standard nearest-50
+  // rounding while preserving the 100 mL minimum. Keep the unrounded calculated
+  // requirement visible in the result for traceability.
+  const roundNearest50 = ml => Math.max(SAMPLE_MIN_ML, Math.round(ml / 50) * 50);
   const roundUp100 = ml => Math.ceil(ml / 100) * 100;
 
   // SP3000 §11.5 — 100 mL per ft² of significant surface, 100 mL minimum.
   function sampleRaw(sig) { return sig <= 0 ? 0 : Math.max(SAMPLE_MIN_ML, sig * SAMPLE_ML_PER_FT2); }
-  function sampleVolume(sig) { return roundUp100(sampleRaw(sig)); }
+  function sampleVolume(sig) { return roundNearest50(sampleRaw(sig)); }
 
   // SP3000 §11.9.2 — 500 mL min under 5 ft², else 100 mL/ft². At exactly 5 ft²
   // both branches give 500 mL, so there is no jump at the boundary.
@@ -516,9 +517,10 @@
 
   function showAnswer(sig, opts) {
     opts = opts || {};
-    const raw = Math.round(sampleRaw(sig));
+    const raw = sampleRaw(sig);
     const sample = sampleVolume(sig);
-    const samples = sample / 100;
+    const increments = sample / 50;
+    const fmtMl = n => Number(n.toFixed(3)).toString();
     let cavityCard = "", cavityNote = "", cav = 0;
     if (opts.cavity) {
       cav = cavityRinseVolume(sig);
@@ -526,8 +528,8 @@
       cavityNote = ' Hidden-area parts get an extra flush \u2014 500 mL if under 5 ft\u00b2, otherwise 100 mL per square foot, rounded up (basis: \u00a711.9.2).';
     }
     const steps = (opts.steps || []).slice();
-    steps.push("Solvent needed: " + SAMPLE_ML_PER_FT2 + " mL per square foot = " + raw + " mL (at least " + SAMPLE_MIN_ML + ")");
-    steps.push("Rounded up to whole 100 mL pours = " + sample + " mL \u2014 collected as " + samples + " \u00d7 100 mL");
+    steps.push("Calculated solvent: " + SAMPLE_ML_PER_FT2 + " mL per square foot = " + fmtMl(raw) + " mL (at least " + SAMPLE_MIN_ML + ")");
+    steps.push("Rounded to the nearest 50 mL = " + sample + " mL \u2014 " + increments + " \u00d7 50 mL increments");
     if (opts.cavity) {
       steps.push("Extra flush for hidden areas: " + (sig < CAVITY_THRESHOLD_FT2
         ? "500 mL (under 5 ft\u00b2)"
@@ -535,13 +537,13 @@
     }
     const body =
       '<div class="answer-row">' +
-        '<div><div class="big-label">Significant Surface Area</div><div class="big-num">' + ft2(sig) + ' ft²</div></div>' +
+        '<div><div class="big-label">Significant Surface Area</div><div class="big-num">' + sf(sig) + ' ft²</div></div>' +
+        '<div><div class="big-label">Calculated minimum</div><div class="big-num">' + fmtMl(raw) + ' mL</div></div>' +
         '<div><div class="big-label">Solvent to collect</div><div class="big-num">' + sample + ' mL</div></div>' +
-        '<div><div class="big-label">100 mL samples</div><div class="big-num">' + samples + '</div></div>' +
         cavityCard +
       '</div>' +
-      '<div class="breakdown">' + ft2(sig) + ' ft² = ' + in2(sig * IN2_PER_FT2) + ' in². ' +
-      'Collect ' + SAMPLE_ML_PER_FT2 + ' mL per square foot, at least ' + SAMPLE_MIN_ML + ' mL, rounded up to whole 100 mL pours.' +
+      '<div class="breakdown">' + sf(sig) + ' ft² = ' + in2(sig * IN2_PER_FT2) + ' in². ' +
+      'Calculate ' + SAMPLE_ML_PER_FT2 + ' mL per square foot with a ' + SAMPLE_MIN_ML + ' mL minimum, then round to the nearest 50 mL.' +
       cavityNote + (opts.extra || "") + ' <span class="ref">Basis: SP3000 §11.5.</span></div>' +
       stepsBlock(steps);
     const o = document.getElementById("output");
